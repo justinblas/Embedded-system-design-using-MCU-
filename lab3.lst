@@ -1,0 +1,338 @@
+0000              1   ; FreqEFM8.asm:  Shows how to use timer 0 to measure the frequency of a pulse waveform
+0000              2   ; in the range 0 to 65535Hz applied to pin T0 (P0.0).
+0000              3   
+                  5   $LIST
+0000              7   
+0000              8   org 0000H
+0000 02049A       9      ljmp MyProgram
+0003             10      
+0003             11   ; These register definitions needed by 'math32.inc'
+0030             12   DSEG at 30H
+0030             13   x:   ds 4
+0034             14   y:   ds 4
+0038             15   z:   ds 4
+003C             16   bcd: ds 5
+0041             17   
+0000             18   BSEG
+0000             19   mf: dbit 1
+0001             20   
+                546   $LIST
+                 22   $LIST
+0273             24   ; These 'equ' must match the hardware wiring
+0273             25   ; They are used by 'LCD_4bit.inc'
+0273             26   LCD_RS equ P2.0
+0273             27   LCD_RW equ P1.7
+0273             28   LCD_E  equ P1.6
+0273             29   LCD_D4 equ P1.1
+0273             30   LCD_D5 equ P1.0
+0273             31   LCD_D6 equ P0.7
+0273             32   LCD_D7 equ P0.6
+                 35   $LIST
+032A             37   
+032A             38   CSEG
+                 39   Left_blank mac
+                 40   	mov a, %0
+                 41   	anl a, #0xf0
+                 42   	swap a
+                 43   	jz Left_blank_%M_a
+                 44   	ljmp %1
+                 45   Left_blank_%M_a:
+                 46   	Display_char(#' ')
+                 47   	mov a, %0
+                 48   	anl a, #0x0f
+                 49   	jz Left_blank_%M_b
+                 50   	ljmp %1
+                 51   Left_blank_%M_b:
+                 52   	Display_char(#' ')
+                 53   endmac
+032A             54   
+032A             55   ; Sends 10-digit BCD number in bcd to the LCD
+032A             56   Display_10_digit_BCD:
+032A C0E0        57            push acc
+032C 7407        57            mov a, #7
+032E 14          57            dec a
+032F 12030D      57            lcall ?Set_Cursor_2 ; Select column and row
+0332 D0E0        57            pop acc
+0334 C000        58            push ar0
+0336 A840        58            mov r0, bcd+4
+0338 120314      58            lcall ?Display_BCD
+033B D000        58            pop ar0
+033D C000        59            push ar0
+033F A83F        59            mov r0, bcd+3
+0341 120314      59            lcall ?Display_BCD
+0344 D000        59            pop ar0
+0346 C000        60            push ar0
+0348 A83E        60            mov r0, bcd+2
+034A 120314      60            lcall ?Display_BCD
+034D D000        60            pop ar0
+034F C000        61            push ar0
+0351 A83D        61            mov r0, bcd+1
+0353 120314      61            lcall ?Display_BCD
+0356 D000        61            pop ar0
+0358 C000        62            push ar0
+035A A83C        62            mov r0, bcd+0
+035C 120314      62            lcall ?Display_BCD
+035F D000        62            pop ar0
+0361             63            ; Replace all the zeros to the left with blanks
+0361 C0E0        64            push acc
+0363 7407        64            mov a, #7
+0365 14          64            dec a
+0366 12030D      64            lcall ?Set_Cursor_2 ; Select column and row
+0369 D0E0        64            pop acc
+036B E540        65            mov a, bcd+4
+036D 54F0        65            anl a, #0xf0
+036F C4          65            swap a
+0370 6003        65            jz Left_blank_16_a
+0372 02040F      65            ljmp skip_blank
+0375             65   Left_blank_16_a:
+0375 C0E0        65            push acc
+0377 7420        65            mov a, #' '
+0379 1202C3      65            lcall ?WriteData
+037C D0E0        65            pop acc
+037E E540        65            mov a, bcd+4
+0380 540F        65            anl a, #0x0f
+0382 6003        65            jz Left_blank_16_b
+0384 02040F      65            ljmp skip_blank
+0387             65   Left_blank_16_b:
+0387 C0E0        65            push acc
+0389 7420        65            mov a, #' '
+038B 1202C3      65            lcall ?WriteData
+038E D0E0        65            pop acc
+0390 E53F        66            mov a, bcd+3
+0392 54F0        66            anl a, #0xf0
+0394 C4          66            swap a
+0395 6003        66            jz Left_blank_19_a
+0397 02040F      66            ljmp skip_blank
+039A             66   Left_blank_19_a:
+039A C0E0        66            push acc
+039C 7420        66            mov a, #' '
+039E 1202C3      66            lcall ?WriteData
+03A1 D0E0        66            pop acc
+03A3 E53F        66            mov a, bcd+3
+03A5 540F        66            anl a, #0x0f
+03A7 6003        66            jz Left_blank_19_b
+03A9 02040F      66            ljmp skip_blank
+03AC             66   Left_blank_19_b:
+03AC C0E0        66            push acc
+03AE 7420        66            mov a, #' '
+03B0 1202C3      66            lcall ?WriteData
+03B3 D0E0        66            pop acc
+03B5 E53E        67            mov a, bcd+2
+03B7 54F0        67            anl a, #0xf0
+03B9 C4          67            swap a
+03BA 6003        67            jz Left_blank_22_a
+03BC 02040F      67            ljmp skip_blank
+03BF             67   Left_blank_22_a:
+03BF C0E0        67            push acc
+03C1 7420        67            mov a, #' '
+03C3 1202C3      67            lcall ?WriteData
+03C6 D0E0        67            pop acc
+03C8 E53E        67            mov a, bcd+2
+03CA 540F        67            anl a, #0x0f
+03CC 6003        67            jz Left_blank_22_b
+03CE 02040F      67            ljmp skip_blank
+03D1             67   Left_blank_22_b:
+03D1 C0E0        67            push acc
+03D3 7420        67            mov a, #' '
+03D5 1202C3      67            lcall ?WriteData
+03D8 D0E0        67            pop acc
+03DA E53D        68            mov a, bcd+1
+03DC 54F0        68            anl a, #0xf0
+03DE C4          68            swap a
+03DF 6003        68            jz Left_blank_25_a
+03E1 02040F      68            ljmp skip_blank
+03E4             68   Left_blank_25_a:
+03E4 C0E0        68            push acc
+03E6 7420        68            mov a, #' '
+03E8 1202C3      68            lcall ?WriteData
+03EB D0E0        68            pop acc
+03ED E53D        68            mov a, bcd+1
+03EF 540F        68            anl a, #0x0f
+03F1 6003        68            jz Left_blank_25_b
+03F3 02040F      68            ljmp skip_blank
+03F6             68   Left_blank_25_b:
+03F6 C0E0        68            push acc
+03F8 7420        68            mov a, #' '
+03FA 1202C3      68            lcall ?WriteData
+03FD D0E0        68            pop acc
+03FF E53C        69            mov a, bcd+0
+0401 54F0        70            anl a, #0f0h
+0403 C4          71            swap a
+0404 7009        72            jnz skip_blank
+0406 C0E0        73            push acc
+0408 7420        73            mov a, #' '
+040A 1202C3      73            lcall ?WriteData
+040D D0E0        73            pop acc
+040F             74   skip_blank:
+040F 22          75            ret
+0410             76   ; We can display a number any way we want.  In this case with
+0410             77   ; four decimal places.
+0410             78   Display_formated_BCD:
+0410 C0E0        79            push acc
+0412 7407        79            mov a, #7
+0414 14          79            dec a
+0415 12030D      79            lcall ?Set_Cursor_2 ; Select column and row
+0418 D0E0        79            pop acc
+041A C0E0        80            push acc
+041C 7420        80            mov a, #' '
+041E 1202C3      80            lcall ?WriteData
+0421 D0E0        80            pop acc
+0423 C000        81            push ar0
+0425 A83F        81            mov r0, bcd+3
+0427 120314      81            lcall ?Display_BCD
+042A D000        81            pop ar0
+042C C000        82            push ar0
+042E A83E        82            mov r0, bcd+2
+0430 120314      82            lcall ?Display_BCD
+0433 D000        82            pop ar0
+0435 C0E0        83            push acc
+0437 742E        83            mov a, #'.'
+0439 1202C3      83            lcall ?WriteData
+043C D0E0        83            pop acc
+043E C000        84            push ar0
+0440 A83D        84            mov r0, bcd+1
+0442 120314      84            lcall ?Display_BCD
+0445 D000        84            pop ar0
+0447 C000        85            push ar0
+0449 A83C        85            mov r0, bcd+0
+044B 120314      85            lcall ?Display_BCD
+044E D000        85            pop ar0
+0450 22          86            ret
+0451 63617061    87   Msg1:  db 'capacitance(nF):', 0
+     63697461
+     6E636528
+     6E46293A
+     00
+0462             88   
+0462             89   ; This 'wait' must be as precise as possible. Sadly the 24.5MHz clock in the EFM8LB1 has an accuracy of just 2%.
+0462             90   Wait_one_second:         
+0462             91       ;For a 24.5MHz clock one machine cycle takes 1/24.5MHz=40.81633ns
+0462 7AC6        92       mov R2, #198 ; Calibrate using this number to account for overhead delays
+0464 79F5        93   X3: mov R1, #245
+0466 78A7        94   X2: mov R0, #167
+0468 D8FE        95   X1: djnz R0, X1 ; 3 machine cycles -> 3*40.81633ns*167=20.44898us (see table 10.2 in reference manual)
+046A D9FA        96       djnz R1, X2 ; 20.44898us*245=5.01ms
+046C DAF6        97       djnz R2, X3 ; 5.01ms*198=0.991s + overhead
+046E 22          98       ret
+046F             99   
+046F            100   ;
+046F            101   
+046F            102   ; Dumps the 5-digit packed BCD number in R2-R1-R0 into the LCD
+046F            103   DisplayBCD:
+046F            104            ; 5th digit:
+046F EA         105       mov a, R2
+0470 540F       106       anl a, #0FH
+0472 4430       107       orl a, #'0' ; convert to ASCII
+0474 1202C3     108            lcall ?WriteData
+0477            109            ; 4th digit:
+0477 E9         110       mov a, R1
+0478 C4         111       swap a
+0479 540F       112       anl a, #0FH
+047B 4430       113       orl a, #'0' ; convert to ASCII
+047D 1202C3     114            lcall ?WriteData
+0480            115            ; 3rd digit:
+0480 E9         116       mov a, R1
+0481 540F       117       anl a, #0FH
+0483 4430       118       orl a, #'0' ; convert to ASCII
+0485 1202C3     119            lcall ?WriteData
+0488            120            ; 2nd digit:
+0488 E8         121       mov a, R0
+0489 C4         122       swap a
+048A 540F       123       anl a, #0FH
+048C 4430       124       orl a, #'0' ; convert to ASCII
+048E 1202C3     125            lcall ?WriteData
+0491            126            ; 1st digit:
+0491 E8         127       mov a, R0
+0492 540F       128       anl a, #0FH
+0494 4430       129       orl a, #'0' ; convert to ASCII
+0496 1202C3     130            lcall ?WriteData
+0499            131       
+0499 22         132       ret
+049A            133       
+049A            134   MyProgram:
+049A 75817F     135            mov sp, #0x7F ; Initialize the stack pointer
+049D            136       
+049D            137       ; DISABLE WDT: provide Watchdog disable keys
+049D 7597DE     138            mov     WDTCN,#0xDE ; First key
+04A0 7597AD     139            mov     WDTCN,#0xAD ; Second key
+04A3            140   
+04A3            141       ; Enable crossbar and weak pull-ups
+04A3 43D47F     142             orl P0SKIP, #0b_111_1111 ; P0.7 and P0.6 used by LCD.  P0.3 used as CS/ for SPI memory.
+04A6 43D503     143            orl P1SKIP, #0b_0000_0011
+04A9 75E100     144            mov     XBR0,#0x00
+04AC 75E210     145            mov     XBR1,#0x10 ; Enable T0 on P0.0.  T0 is the external clock input to Timer/Counter 0
+04AF 75E340     146            mov     XBR2,#0x40
+04B2            147   
+04B2            148            ; Switch clock to 24.5 MHz
+04B2 75A900     149            mov     CLKSEL, #0x00 ; 
+04B5 75A900     150            mov     CLKSEL, #0x00 ; Second write to CLKSEL is required according to the user manual (page 77)
+04B8            151            
+04B8            152            ; Wait for the 24.5 MHz oscillator to stabilze by checking bit DIVRDY in CLKSEL
+04B8            153   waitclockstable:
+04B8 E5A9       154            mov a, CLKSEL
+04BA 30E7FB     155            jnb acc.7, waitclockstable
+04BD            156            
+04BD            157            ;Initializes timer/counter 0 as a 16-bit counter
+04BD C28C       158       clr TR0 ; Stop timer 0
+04BF E589       159       mov a, TMOD
+04C1 54F0       160       anl a, #0b_1111_0000 ; Clear the bits of timer/counter 0
+04C3 4405       161       orl a, #0b_0000_0101 ; Sets the bits of timer/counter 0 for a 16-bit counter
+04C5 F589       162       mov TMOD, a
+04C7            163   
+04C7            164            ; Configure LCD and display initial message
+04C7 1202CD     165       lcall LCD_4BIT
+04CA C0E0       166            push acc
+04CC 7401       166            mov a, #1
+04CE 14         166            dec a
+04CF 12030F     166            lcall ?Set_Cursor_1 ; Select column and row
+04D2 D0E0       166            pop acc
+04D4 C083       167            push dph
+04D6 C082       167            push dpl
+04D8 C0E0       167            push acc
+04DA 900451     167            mov dptr, #Msg1
+04DD 120302     167            lcall ?Send_Constant_String
+04E0 D0E0       167            pop acc
+04E2 D082       167            pop dpl
+04E4 D083       167            pop dph
+04E6            168   
+04E6            169   Forever:
+04E6            170   
+04E6            171       ; Measure the frequency applied to pin T0 (T0 is routed to pin P0.0 using the 'crossbar')
+04E6 C28C       172       clr TR0 ; Stop counter 0
+04E8 758A00     173       mov TL0, #0
+04EB 758C00     174       mov TH0, #0
+04EE D28C       175       setb TR0 ; Start counter 0
+04F0 120462     176       lcall Wait_one_second
+04F3 C28C       177       clr TR0 ; Stop counter 0, TH0-TL0 has the frequency
+04F5            178   
+04F5 858A34     179            mov y+0, TL0
+04F8 858C35     180            mov y+1, TH0 ; y hold frequency 
+04FB 753600     181            mov y+2, #0 ; pad high bits with zero 
+04FE 753700     182            mov y+3, #0 ; pad high bits with zero 
+0501 753000     183            mov x+0, #low (1440000000 % 0x10000) 
+0504 7531A8     183            mov x+1, #high(1440000000 % 0x10000) 
+0507 7532D4     183            mov x+2, #low (1440000000 / 0x10000) 
+050A 753355     183            mov x+3, #high(1440000000 / 0x10000)    ;  144000000 nf
+050D            184      ; 
+050D 12020A     185            lcall div32 
+0510 7534E8     186            mov y+0, #low (1000 % 0x10000) 
+0513 753503     186            mov y+1, #high(1000 % 0x10000) 
+0516 753600     186            mov y+2, #low (1000 / 0x10000) 
+0519 753700     186            mov y+3, #high(1000 / 0x10000) 
+051C 12017D     187      lcall mul32
+051F 75347A     188            mov y+0, #low (122 % 0x10000) 
+0522 753500     188            mov y+1, #high(122 % 0x10000) 
+0525 753600     188            mov y+2, #low (122 / 0x10000) 
+0528 753700     188            mov y+3, #high(122 / 0x10000) 
+052B 12020A     189      lcall div32
+052E            190         
+052E            191   
+052E 120003     192            lcall hex2bcd 
+0531            193            
+0531 120410     194            lcall Display_formated_BCD ; 
+0534            195            
+0534            196   
+0534            197   
+0534 0204E6     198            ljmp Forever ; Repeat!
+0537            199            
+0537            200   END
